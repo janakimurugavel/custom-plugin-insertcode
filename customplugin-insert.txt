@@ -1,0 +1,101 @@
+<?php
+/*
+Plugin Name: Webindia News
+Description: This is a Webindia News plugin for WordPress.
+Version: 1.0
+Author: Janaki
+*/
+
+// Add a menu item for your plugin
+add_action('admin_menu', 'my_custom_plugin_menu','custom_plugin_add_submenu');
+
+function my_custom_plugin_menu() {
+    // Add a top-level menu item
+    add_menu_page(
+        'Webindia News',      // Page title
+        'Webindia News',           // Menu title
+        'manage_options',          // Capability required
+        'webindia-news',   // Menu slug
+        'webindia_plugin_page',   // Callback function
+        'dashicons-admin-plugins'  // Icon URL or name
+    );
+    
+     // Add a submenu page for editing posts
+    add_submenu_page(
+        'webindia-news',           // Parent slug
+        'Edit Webindia Post',      // Page title
+        'Edit Post',               // Menu title
+        'manage_options',          // Capability required
+        'webindia-page-edit',      // Menu slug
+        'webindia_edit_post_page'  // Callback function
+    );
+}
+
+// Callback function to display your plugin page
+function webindia_plugin_page() {
+    // Display your plugin page content here
+    echo '<div class="wrap">';
+    echo '<h1>Webindia News</h1>';
+      // Add edit button
+    echo '<a href="' . admin_url('admin.php?page=webindia-page-edit') . '" class="button button-primary">Edit Post</a>';
+
+    
+     if (isset($_POST['submit_news'])) {
+        // Verify nonce to ensure security
+        if (!isset($_POST['custom_news_nonce']) || !wp_verify_nonce($_POST['custom_news_nonce'], 'custom_news_nonce')) {
+            die('Security check');
+        }
+
+        // Sanitize and process form data
+        $title = sanitize_text_field($_POST['title']);
+        $content = sanitize_textarea_field($_POST['content']);
+
+        // Insert data into database
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'custom_news';
+        $wpdb->insert(
+            $table_name,
+            array(
+                'title' => $title,
+                'content' => $content
+            )
+        );
+        echo '<div class="updated"><p>News added successfully!</p></div>';
+    }
+
+    // Display the form
+    ?>
+    <div class="wrap">
+        <h1>Add News</h1>
+        <form method="post">
+            <?php wp_nonce_field('custom_news_nonce', 'custom_news_nonce'); ?>
+            <label for="title">Title:</label><br>
+            <input type="text" id="title" name="title" required><br>
+            <label for="content">Content:</label><br>
+            <textarea id="content" name="content" rows="4" required></textarea><br>
+            <input type="submit" name="submit_news" class="button button-primary" value="Add News">
+        </form>
+    </div>
+    <?php
+}
+// Shortcode to display news
+function custom_news_shortcode($atts) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'custom_news';
+    $news = $wpdb->get_results("SELECT * FROM $table_name ORDER BY date_added DESC");
+
+    $output = '<ul>';
+    foreach ($news as $item) {
+        $output .= '<li>';
+        $output .= '<h2>' . esc_html($item->title) . '</h2>';
+        $output .= '<div>' . wpautop(esc_html($item->content)) . '</div>';
+        $output .= '</li>';
+    }
+    $output .= '</ul>';
+
+    return $output;
+}
+add_shortcode('custom_news', 'custom_news_shortcode');
+
+?>
+
